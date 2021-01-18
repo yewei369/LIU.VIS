@@ -1,0 +1,245 @@
+---
+title: "Lab3_B7_2"
+subtitle: "Visualization -- 732A98"
+author: "Jun Li, Fahed Maqbool"
+date: '2020-12-20'
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(eval=TRUE,echo=F,
+                      message = F, warning = F, error = F,
+                      fig.width=7, fig.height=5, fig.align="center")
+```
+
+```{r}
+#RNGversion('3.5.1')
+library(ggplot2)
+library(plotly)
+library(akima)
+library(dplyr)
+```
+
+## Statement of Contribution
+
+There are two steps of the shared group strategy: each member should try to solve the problems for themselves, potential discussions are encouraged to inspire learning process; the report is generated and merged in principle presenting the more appropriate solutions out of members'. Generally, both members are capable of delivering their own solutions and equally contributed in the group report. 
+
+The same strategy was implemented in report revision, where discussion between members and with classmates comprised the main part of problem identification. In this report, Jun Li has major responsibility for assignment 1, while Fahed Maqbool for assignment 2. 
+
+## Assignment 1: Visualization of mosquito’s populations
+
+### part 1
+Aedes aegypti prevails in Lartin America, South East Asia and mid-Africa, while Aedes albopictus in USA and sparsely in asian coast and Mediterranean. Through years based on 2004 and 2013, the former has skrinked significantly to Brasil and the latter to Italy and Taiwan China. There is a potential perception problem which is hard to distinguish density of two or more areas if there are too many overlapped instances.
+
+
+```{r}
+## part 1.1
+da<-read.csv("aegypti_albopictus.csv")
+
+Sys.setenv("MAPBOX_TOKEN"="pk.eyJ1IjoianVubGk1NTkiLCJhIjoiY2tmN3oyaHlhMDc3ejJ6bGN2cGJldmF5dSJ9.lO7ftotViCnubnjNZnLFIg")
+
+myplot<-function(n)
+da[da$YEAR==n,] %>% 
+  plot_mapbox() %>%
+   add_markers(x= ~X,y = ~Y,text=~COUNTRY,hoverinfo="text",color=~VECTOR)  %>%
+   layout(title=paste("Distribution of year",n),
+          mapbox = list(
+                       style = 'open-street-map',
+                       zoom =2.5,
+                       center = list(lon = 116, lat = 40),
+                       layers = list(below="traces"))) 
+
+
+
+myplot(2004)
+myplot(2013)
+
+```
+
+### part 2
+The problem here is that one can not tell the distribution between two mosquitos and hard to analyze precise distributions with geographical areas. Besides, the hue range is so huge that those with low values or hue differences would even not be detected.
+
+
+```{r}
+## part 2.2
+countries<-levels(factor(da$COUNTRY))  ## collect countries
+id<-rep(NULL,length(countries))
+values<-rep(NULL,length(countries))
+for(i in 1:length(countries)) 
+  {values[i]<-sum(da$COUNTRY==countries[i])
+   id[i]<-levels(factor(da$COUNTRY_ID[which(da$COUNTRY==countries[i])]))}
+da2<-data.frame(countries,values,id)
+
+plot_geo(da2) %>% 
+  add_trace(z=~values, text=~countries, locations=~id) %>%  ## color=~values,colors='Purples'
+  colorbar(title = "Quantity") %>% 
+  layout(title = 'Quantity per Country',
+         geo=list(projection=list(type='equirectangular')))
+
+```
+
+
+
+### part 3
+The first graph presents a friendly map where we can easily see that there is high density in America and South-East Asia. However, together with the second graph, they still could not present further information in which precise area they are distributed.
+
+Regarding useful information from the plots, it is found that the most heavily affected area is Taiwan with logarithmic value 10.12, then comes Brazil and US and South-east Asia. While Canada, Russia and Africa were not affected so much.
+
+Equirectangular projection gives a clear view of how the moquitoes are distributed over the world, but twisted area close to poles as cost. While Conic equal area projection reflects area in a better manner, but not easy to grasp a whole picture of distribution. Thus equirectangular projection is suggested when the area factor is not prioritized.
+
+
+```{r}
+## part 2.3
+countries<-levels(factor(da$COUNTRY))  ## collect countries
+id<-rep(NULL,length(countries))
+values<-rep(NULL,length(countries))
+for(i in 1:length(countries)) 
+  {values[i]<-log(sum(da$COUNTRY==countries[i]))
+   id[i]<-levels(factor(da$COUNTRY_ID[which(da$COUNTRY==countries[i])]))}
+da3<-data.frame(countries,values,id)
+
+myplot2<-function(p)
+  plot_geo(data=da3,z=~values, locations=~id) %>% 
+    colorbar(title = "Quantity") %>% 
+    layout(title = paste('Quantity per Country','/',p),
+           geo=list(projection=list(type=p)))
+
+myplot2('equirectangular')
+myplot2('conic equal area')  
+#myplot2('orthographic')   ##   GLOBE
+```
+
+### part 4
+The graph shows that the coast is the most infected areas by mosquitos particularly around coordinate (-35,-6), which presents a detailed distribution and easier for the readers to acquire the information.
+
+
+```{r}
+## part 2.4
+da4<-filter(da,COUNTRY=="Brazil" & YEAR==2013)
+da4$X1<-cut_interval(da4$X,100)
+da4$Y1<-cut_interval(da4$Y,100)
+
+da4<-da4 %>% group_by(X1,Y1) %>%
+     dplyr::summarise(mean_x=mean(X),mean_y=mean(Y),observ=n(),.groups="drop")     
+
+
+da4 %>% plot_mapbox() %>%
+   add_markers(x= ~mean_x,y = ~mean_y,#size=~quan,
+               text=paste(da4$observ,",",da4$mean_x,",",da4$mean_y,sep=""),
+               hoverinfo="text",color=~observ)  %>%
+   layout(title="Regional Distribution",
+          mapbox = list(
+                       style = 'open-street-map',
+                       zoom =2.5,
+                       center = list(lon = -50, lat = -10),
+                       layers = list(below="traces"))) 
+
+```
+
+
+
+## Assignment 2: Visualization of income in Swedish households
+
+### part 1+2
+It shows that the young group has the lowest mean income, and all groups have a skewed distribution. In detail, 50-64 year group has the highest mean, median and max income in Sweden, while 18-29 year group has the lowest mean, median and max income, and all max income come from Stockholm region; 50-64 year group has the largest variance and 18-29 group has the compact distribution; all three groups have distribution more compacted in the first half quantile, and the higher income gets the larger gap there is between incomes.
+
+
+```{r}
+## part 2.1
+rds<-readRDS('gadm36_SWE_1_sf.rds')
+da<-read.csv("000000KD_20200922-024132.csv")
+
+regions<-levels(factor(da$region))
+income<-matrix(0,nrow=length(regions),ncol=3)
+colnames(income)<-c("Young","Adult","Senior")
+for(i in 1:length(regions)){
+  temp=da$X2016[which(da$region==regions[i])]
+  income[i,]<-temp
+}
+da1<-cbind(regions,income)
+print("Here comes the brief of new dataset:")
+head(da1)
+
+## part 2.2
+plot_ly(da, x=~factor(age), y=~X2016, split=~factor(age),
+        type="violin", box=list(visible=T),
+        hoverinfo = text,
+        text = da$region) %>% 
+  layout(title = "Mean Income Distribution",
+         xaxis = list( title ="Age"),
+         yaxis = list( title ="Mean income"))
+
+```
+
+
+
+### part 3
+It shows that group senior has positive corelation with both young and adult groups, which means that when mean income of adult and young group increases the income of senior group tends to rise as well. However, this does not suggest any causal relationship or dependencies. (Clearly a linear regression model is not proper in this case. In order to model the relation between groups, a log-scaled variables would be alternative to study further.) 
+
+
+```{r}
+## part 2.3
+income<-as.data.frame(income)
+s<-interp(income$Young,income$Adult,income$Senior,duplicate = "mean")
+
+
+plot_ly(x=s$x,y=s$y,z=s$z) %>%
+  add_surface()
+
+```
+
+### part 4
+Both Young and Adult groups have highest mean income in Stockholm region, and map for Adult group looks darker, which means they have lower income than Young group. From those maps we can have a better image how the income is distributed in Sweden.
+
+In detail, young group has highest mean income in Stockholm, Halland, Nobotten and Södermalmland, while adult group in Stockholm, Halland and Uppsala; lower income for young are mainly distributed in Västerbotten and Värmland while adult group has lower income within group mainly in northern Sweden; comparing with young, the adult group has higher income more densed in Southeast and Southwest regions, while young group has income distribution more balanced in the country.
+
+
+```{r}
+## part 2.4
+names<-unlist(lapply(regions,function(x) {ind_space<-which(unlist(strsplit(x,""))==" ")
+                                          substr(x,4,ind_space[2]-1)
+                                          }))
+id<-unlist(lapply(regions,function(x) substr(x,1,2)))
+
+rownames(income)<-names
+rds$Young<-income[rds$NAME_1,"Young"]
+rds$Young[is.na(rds$Young)]<-mean(income$Young)  ## NA values replaced by mean
+rds$Adult<-income[rds$NAME_1,"Adult"] 
+rds$Adult[is.na(rds$Adult)]<-mean(income$Adult)  ## NA values replaced by mean
+
+you<-plot_ly() %>% 
+  add_sf(data=rds, split=~NAME_1,color=~Young,
+         showlegend=F, alpha=1) %>%
+  colorbar(title = "/K SEK") %>% 
+  layout(title ="Mean Income of Young")
+
+adu<-plot_ly() %>% 
+  add_sf(data=rds, split=~NAME_1,color=~Adult,
+         showlegend=F, alpha=1) %>%
+  colorbar(title = "/K SEK") %>% 
+  layout(title ="Mean Income of Young and Adult")
+
+subplot(you,adu,titleX=T,titleY=T)
+```
+
+### part 5
+
+```{r}
+## part 2.5
+plot_ly() %>% 
+  add_sf(data=rds, split=~NAME_1,color=~Young,
+         showlegend=F, alpha=1) %>%
+  add_markers(x=15.6,y=58.4,color="red",size=10) %>%
+  colorbar(title = "/K SEK") %>% 
+  layout(title ="Mean Income of Young") 
+
+```
+
+## Appendix code
+```{r ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}
+```
+
+
+
+

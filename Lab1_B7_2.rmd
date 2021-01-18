@@ -1,0 +1,221 @@
+---
+title: "Lab1_B7_2"
+subtitle: "Visualization -- 732A98"
+author: "Jun Li, Fahed Maqbool"
+date: '2020-12-20'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(eval=TRUE,echo=F,
+                      message = F, warning = F, error = F,
+                      fig.width=7, fig.height=5, fig.align="center")
+```
+
+```{r}
+RNGversion('3.5.1')
+library(ggplot2)
+library(gridExtra)
+library(plotly)
+library(shiny)
+```
+
+## Statement of Contribution
+
+There are two steps of the shared group strategy: each member should try to solve the problems for themselves, potential discussions are encouraged to inspire learning process; the report is generated and merged in principle presenting the more appropriate solutions out of members'. Generally, both members are capable of delivering their own solutions and equally contributed in the group report. 
+
+The same strategy was implemented in report revision, where discussion between members and with classmates comprised the main part of problem identification. In this report, Jun Li has major responsibility for assignment 1 and problem 1-7 in assignment 2, while Fahed Maqbool for problem 8 in assignment. 
+
+
+## Assignment 1: 
+
+<center>
+
+![new tree](./new.png)
+
+</center>
+
+## Assignment 2: 
+### part 3
+The graph shows that the hospitals with infection risk of around 4.5 have largest density, and there are sex hospitals which have abnormal values in this dimension.
+
+```{r}
+## part 1.1
+da<-read.table("SENIC.txt",header=FALSE)
+## part 1.2 
+myfunc<-function(x){
+  q1<-quantile(x,0.25)
+  q3<-quantile(x,0.75)
+  h<-as.numeric(q3+1.5*(q3-q1))
+  l<-as.numeric(q1-1.5*(q3-q1))
+  
+  return (c(which(x<l),which(x>h)))
+}
+## part 1.3
+infection_risk<-as.vector(as.matrix(da[4])) ## vector for Infection Risk
+ind_out_ir<-myfunc(infection_risk)             ## index of outlier
+dens_ir=density(infection_risk)$y  ## density of outlier
+shap=rep(1,113)
+shap[ind_out_ir]=23  ## 23 symbolisize diamond
+da1<-as.data.frame(cbind(infection_risk,dens_ir,shap))
+
+g_part3<-ggplot()+
+   geom_density(data=da1,alpha=0.8,mapping=aes(x=infection_risk))+
+   scale_shape_identity()+
+   geom_point(data=da1[ind_out_ir,],mapping=aes(x=infection_risk,y=0,shape=shap,fill="red"))+
+   ggtitle("Density of Infection Risk")+
+   theme(plot.title = element_text(hjust = 0.5),legend.position="none")
+g_part3
+```
+
+### part 4
+All variables have highest probability somewhere in the middle of the range, except medical school affiliation which is discrete variable. Meanwhile, there are no abnormal observations for variables available facilities and services.
+
+```{r}
+## part 1.4
+nvar=ncol(da)
+var_name<-c("Identification Number","Length of Stay","Age","Infection Risk","Routine Culturing Ratio","Routine Chest X-ray Ratio","Number of Beds","Medical School Affiliation","Region","Average Daily Census","Number of Nurses","Available Facilities & Services")
+
+gr<-NULL
+for(i in c(2:12)[-8]){
+  var<-as.vector(as.matrix(da[i])) ## vector for variables
+  ind_out<-myfunc(var)             ## index of outlier
+  dens=density(var)$y  ## density of outlier
+  shap=rep(1,113)
+  shap[ind_out]=23  ## 23 symbolisize diamond
+  danew<-as.data.frame(cbind(var,dens,shap))
+
+  g<-ggplot()+
+     geom_density(data=danew,alpha=0.8,mapping=aes(x=var))+
+     ggtitle(paste("Density of",var_name[i]))+
+     theme(plot.title = element_text(hjust = 0.5,size=8),legend.position="none")
+  if(length(ind_out)!=0) 
+     g<-g+
+        scale_shape_identity()+
+        geom_point(data=danew[ind_out,],mapping=aes(x=var,y=dens,shape=shap,fill="red"))
+  gr<-append(gr,list(g))
+  #assign(paste("g",i,sep=""),g)
+}
+
+grid.arrange(arrangeGrob(grobs=gr))
+#grid.arrange(g2,g3,g4,g5,g6,g7,g8,g10,g11,g12,ncol=3,widths=rep(50,3),heights=rep(2,4),
+#             layout_matrix = rbind(c(1,2,3), c(4,5,6),c(7,8,9),c(10,11,11)))
+
+```
+
+### part 5
+Infection risk and number of nurses seem to share slightly positive correlation.It seems number of beds has positive correlation with number of nurses but not obvious correlation with infection risk. Grouping in color should be a good tool to identify relations between variables, however, in this case "Number of beds" is a continuous variable which is prone to make human eyes tired and draw a misleading conclusion, since this color scale is hard for human being to differentiate between hues. 
+
+```{r}
+## part 1.5
+names(da)=var_name ## assign variable names to dataframe
+
+ggplot(da,aes(x=da[,4],y=da[,11],color=da[,7]))+
+  geom_point()+
+  xlab("Infection risk")+
+  ylab("Number of nurses")+
+  scale_colour_continuous(name="Number\nof Beds")  ## Legend title and lab names
+
+```
+
+
+### part 6
+This produces a standalone HTML, which has some built-in interactivities and can also be directly published on web. The new interactive plot shows that the mode has density of around 0.38 and infection risk of around 4.4
+
+
+```{r}
+## part 1.6
+ggplotly(g_part3)
+
+```
+
+
+
+### part 7
+
+```{r}
+## part 1.7
+plot<-da %>%  
+      plot_ly(x=da[-ind_out_ir,4],type="histogram",name="Infection<br>Risk") %>%
+      add_markers(x=da[ind_out_ir,4],y=0,symbol=I(18),name="Outliers") %>%
+      layout(title="Histogram of Infection Risk",
+             xaxis=list(title="Infection risk"),
+             yaxis=list(title="Frequency"))
+      
+plot
+```
+
+
+
+### part 8
+The larger the bandwidth is, the smoother the density plot is. This report suggest around 0.8 as a shared bandwidth for all plots.
+
+```{r}
+## part 1.8
+
+ui <- fluidPage(
+  titlePanel("Show Density Plot!"),
+  
+  sliderInput(inputId="ws", 
+              label="Choose bandwidth size", 
+              value=0.01, min=0.1, max=1),
+  checkboxGroupInput(inputId="var",
+                     label="Choose variables:",
+                     choices=c("Length of Stay","Age","Infection Risk","Routine Culturing Ratio","Routine Chest X-ray Ratio","Number of Beds","Medical School Affiliation","Region","Average Daily Census","Number of Nurses","Available Facilities & Services")),
+  plotOutput("densPlot")
+  
+  )
+
+server <- function(input, output) {
+  output$densPlot=renderPlot({
+    nvar=ncol(da)
+    var_name<-c("Identification Number","Length of Stay","Age","Infection Risk","Routine Culturing Ratio","Routine Chest X-ray Ratio","Number of Beds","Medical School Affiliation","Average Daily Census","Number of Nurses","Available Facilities & Services")
+    g_all=NULL ## all plot names
+    plot_all=NULL ## all plots
+    
+    len<-length(input$var)
+    if(len>0){
+      
+      ind_selected=NULL  ## index of selected variables
+      for(i in 1:len) ind_selected=c(ind_selected,which(input$var[i]==var_name)) 
+      #print(input$var)
+      #print(ind_selected)
+      
+      for(i in 1:len){
+        var<-as.vector(as.matrix(da[ind_selected[i]])) ## vector for variables
+        ind_out<-myfunc(var)             ## index of outlier
+        dens=density(var)$y  ## density of outlier
+        shap=rep(1,113)
+        shap[ind_out]=23  ## 23 symbolisize diamond
+        danew<-as.data.frame(cbind(var,dens,shap))
+      
+        g<-ggplot()+
+           geom_density(data=danew,alpha=0.8,mapping=aes(x=var),bw=input$ws)+
+           ggtitle(paste("Density of",var_name[ind_selected[i]]))+
+           theme(plot.title = element_text(hjust = 0.5,size=8),legend.position="none")
+        if(length(ind_out)!=0) 
+           g<-g+
+              scale_shape_identity()+
+              geom_point(data=danew[ind_out,],mapping=aes(x=var,y=dens,shape=shap,fill="red"))
+        
+        g_now=paste("g",ind_selected[i],sep="") ## current plot name
+        g_all=c(g_all,g_now)
+        assign(g_now,g)
+        plot_all=append(plot_all,list(g))
+        }
+    }
+  
+    
+    #print("HAHA")
+    if(length(g_all)>0) grid.arrange(grobs=plot_all,ncol=3,widths=rep(50,3),heights=rep(2,4))
+    }) 
+  
+}
+
+shinyApp(ui = ui, server = server)
+
+```
+
+## Appendix code
+```{r ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}
+```

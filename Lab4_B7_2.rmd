@@ -1,0 +1,269 @@
+---
+title: "Lab4_B7_2"
+subtitle: "Visualization -- 732A98"
+author: "Jun Li, Fahed Maqbool"
+date: '2020-12-20'
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(eval=TRUE,echo=F,
+                      message = F, warning = F, error = F,
+                      fig.width=7, fig.height=5, fig.align="center")
+```
+
+```{r}
+RNGversion('3.5.1')
+library(ggplot2)
+library(gridExtra)
+library(plotly)
+#library(TSP)
+library(seriation)
+library(scales)
+library(dplyr)
+```
+
+## Statement of Contribution
+
+There are two steps of the shared group strategy: each member should try to solve the problems for themselves, potential discussions are encouraged to inspire learning process; the report is generated and merged in principle presenting the more appropriate solutions out of members'. Generally, both members are capable of delivering their own solutions and equally contributed in the group report. 
+
+The same strategy was implemented in report revision, where discussion between members and with classmates comprised the main part of problem identification. In this report, Jun Li has major responsibility for assignment 1, while Fahed Maqbool for assignment 2.
+
+
+## Assignment 1: High-dimensional visualization of economic data
+### part 1+2
+As seen, it is difficult to detect any clustering or outliers.
+
+```{r}
+## part 1.1+1.2
+da<-read.delim("prices-and-earnings.txt")
+col_needed<-c(1,2,5,6,7,9,10,16,17,18,19)
+da<-da[,col_needed]
+cities<-da[,1]
+da<-da[,-1]
+da<-sapply(da,function(x) as.numeric(as.character(x)))
+rownames(da)<-cities
+da<-scale(da)
+
+plot_ly(x=colnames(da),y=rownames(da),z=da,type="heatmap",colors =colorRamp(c("yellow", "red"))) %>%
+  layout(title="Original Heatmap",
+         xaxis=list(title="Variables"),
+         yaxis=list(title="Cities"))
+
+```
+
+
+
+### part 3
+The first heatmap by euclidean distance seems easier to analyze since there are relatively clear clustering. It shows that, there are two main clusters, one headed by Oslo and Tokyo (Cluster B, the lower half) and the other by Jakarta and Nairobi (Cluster A, the upper half); variables such as "iPhone.4S.hr.", "Big.Mac.min." have high values for cluster A and high positive correlations; "Wage.Net", "Goods.and.Services..." have high values for cluster B and share high positive correlation. Cluster A can be interpreted as undeveloped cities and cluster B as developed cities. For example, people living in Oslo probably have higher income level and less working hours needed to afford an amount assumption of a product, and opposite for Nairobi in cluster A.
+
+
+```{r}
+## part 1.3
+dis1_var<-dist(t(da),method="euclidean")  ## Euclidean dist
+dis1_cit<-dist(da,method="euclidean")
+dis2_var<-as.dist(1-abs(cor(da))) ## 1-cor
+dis2_cit<-as.dist(1-abs(cor(t(da))))
+
+ord1_var<-get_order(seriate(dis1_var,method="GW"))
+ord2_var<-get_order(seriate(dis2_var,method="GW"))
+ord1_cit<-get_order(seriate(dis1_cit,method="GW"))
+ord2_cit<-get_order(seriate(dis2_cit,method="GW"))
+
+plot_ly(x=colnames(da)[ord1_var],y=rownames(da)[ord1_cit],z=da[ord1_cit,ord1_var],
+        type="heatmap",colors =colorRamp(c("yellow", "red"))) %>%
+  layout(title="Heatmap by GW with Euclidean dist.",
+         xaxis=list(title="Variables"),
+         yaxis=list(title="Cities"))
+
+plot_ly(x=colnames(da)[ord2_var],y=rownames(da)[ord2_cit],z=da[ord2_cit,ord2_var],
+        type="heatmap",colors =colorRamp(c("yellow", "red"))) %>%
+  layout(title="Heatmap by GW with 1-cor.",
+         xaxis=list(title="Variables"),
+         yaxis=list(title="Cities"))
+```
+
+### part 4
+In this part optimizing is based on the euclidean distances and "TSP" method tends to give the better result, since it presents compact clustering and smoother hue transition. Consistently, according to the objective function value, both Hamiltonian path length and Gradient measure favors TSP optimizer since it has lower value in Hamiltonian path length and higher weighted gradient measure .
+
+
+```{r}
+## part 1.4
+set.seed(112)
+ord_var<-get_order(seriate(dis1_var,method="TSP")) 
+ord_cit<-get_order(seriate(dis1_cit,method="TSP")) 
+
+plot_ly(x=colnames(da)[ord_var],y=rownames(da)[ord_cit],z=da[ord_cit,ord_var],
+        type="heatmap",colors =colorRamp(c("yellow", "red"))) %>%
+  layout(title="Heatmap by TSP with Euclidean dist.",
+         xaxis=list(title="Variables"),
+         yaxis=list(title="Cities"))  
+
+cat(sprintf("%*s",25,"")) 
+cat(sprintf("%*s",10,"GW"));cat(sprintf("%*s",10,"TSP"));cat("\n") 
+cat(sprintf("%*s",25,"Hamiltonian path length"))
+cat(sprintf("%*s",10,round(criterion(dis1_cit,ord1_cit)["Path_length"])))
+cat(sprintf("%*s",10,round(criterion(dis1_cit,ord_cit)["Path_length"])));cat("\n")
+cat(sprintf("%*s",25,"Gradient measure"))
+cat(sprintf("%*s",10,round(criterion(dis1_cit,ord1_cit)["Gradient_weighted"])))
+cat(sprintf("%*s",10,round(criterion(dis1_cit,ord_cit)["Gradient_weighted"])))
+```
+
+
+
+### part 5
+There are several typical cities within obvious clustering selected and marked in yellow and purple, such as  "Tokyo|Luxembourg|Copenhagen|Oslo|Zurich|Geneva|New York" in yellow and "Manila|Jakarta|Nairobi|Delhi|Mumbai|Cairo" in purple. It shows that variables including *vacation.days, big.Mac.min etc and rice.kg.in.min* are important to define clustering since they distinguish clustering better, and the marked yellow cluster has specially higher value in *vacation.day* and lower value in *big.Mac.min and rice.kg.in.min*, which can be interpreted as developed cities. There is the city Vilnius which has high value in vacation.days and lower value in big.Mac.min etc, but high value in rice.kg.in.min. This outlier might be explained by the high local price of rice.
+
+
+```{r}
+## part 1.5
+cluster <- ifelse(
+  !grepl("Tokyo|Luxembourg|Copenhagen|Oslo|Zurich|Geneva|New York", 
+         rownames(da)), 
+                  ifelse(grepl("Manila|Jakarta|Nairobi|Delhi|Mumbai|Cairo", 
+                               rownames(da)), "2", "1"),"0")
+
+dims<-list()
+for(i in 1:ncol(da))
+  dims[[i]]<-list(label=colnames(da)[i],values=as.formula(paste("~",colnames(da)[i])))
+
+as.data.frame(da) %>% 
+  plot_ly(type="parcoords",line = list(color =cluster),
+          dimensions=dims,text=~rownames(da),hoverinfo="text") %>% 
+  layout(title = "permuted parallel coordinate")
+```
+
+### part 6
+There are two obvious clusters, one with high values in lower hemisphere  and low values in upper hemisphere (such as Tokyo, Geneva, Newyork, Oslo and Zurich), and opposite for the other cluster (such as Jarkata, Manila and Nairobi). The most distinct outliers are Paris, Rome and Milano which have high values not only in lower hemisphere but also relatively high in some variables in upper hemisphere. 
+
+
+```{r}
+## part 1.6
+nyda<-as.data.frame(da[ord1_cit,ord1_var])
+
+Ps=list()
+nPlot=nrow(nyda)
+
+nyda %>%
+  add_rownames( var = "group" ) ->nyda_radar ##%>%
+  ##mutate_each(list(rescale), -group) -> mtcars_radar
+
+for (i in 1:nPlot){
+  Ps[[i]] <- htmltools::tags$div(
+    plot_ly(type = 'scatterpolar', 
+            r=as.numeric(nyda_radar[i,-1]),
+            theta= colnames(nyda_radar)[-1], 
+            fill="toself")%>%
+      layout(title=nyda_radar$group[i]), style="width: 25%;")
+}
+
+h <-htmltools::tags$div(style = "display: flex; flex-wrap: wrap", Ps)
+
+htmltools::browsable(h)
+```
+
+### part 7
+Heatmap is the best to analyze this assignment and detect clusters due to its simplicity. On the other hand it is not so sensitive to the objective value. For example a wrong perceptive conclusion could be drew due to hue fatigue. Radar chart is the second since you can have a whole picture of all variables, drawback is that you have to go through all observations in juxtaposed version. Parallel coordinates is the last one due to its messy outlook and difficulty picking particular observation. 
+
+
+## Assignment 2: Trellis plots for population analysis
+### part 1
+The scatter plot by ggplot does not give much useful information, since there are too many points and they overlap a lot. The trellis plot shows that in group with income less than 50k, almost all age groups (20-75) work less than 50 hours per week; while in group with income more than 50k, almost all age groups (25-62) work around 45 hours per week. Generally, higher income group tends to have regular working hours of 42, and most under age 25-62, while lower income group covers all age groups and does not have regular working hours. 
+
+
+```{r}
+## part 2.1
+da<-read.csv("adult.csv")
+colnames(da)<-c("age","workclass","fnlwgt","education","educationNum","maritalStatus","occupation","relationship","race","sex","capitalGain","capitalLoss","hoursPerWeek","nativeCountry","incomeLevel")
+g<-ggplot(da)+geom_point(aes(y=hoursPerWeek,x=age,color=incomeLevel))
+t<-g+facet_grid(incomeLevel~.)
+g
+t
+```
+
+### part 2
+The first plot shows that higher income group has higher mode age (age with largest probability) than lower income group. While from the second graph we learn more details on age distribution between income levels across different marital status groups. For example, higher income level tends to have higher mode age except married-AF-spouse and widowed; these two groups have almost the same mode age for both income levels; marital status has mode age in a decreasing order: widowed, divorced, married-cil-spouse, married-spouse-absent, separated, married-AF-spouse, never-maried; there is a local peak around 75-year old for lower income level in married-AF-spouse group.
+
+
+```{r}
+## part 2.2
+g<-ggplot(data=da,aes(x=age,fill=incomeLevel))+
+   geom_density(alpha=0.8)+
+   scale_shape_identity()+
+   ggtitle("Density of Age")+
+   theme(plot.title = element_text(hjust = 0.5))
+
+t<-g+facet_wrap(maritalStatus~.)
+g
+t
+```
+
+### part 3
+3D scatter plot is hard to analyze since there are too many points and they overlap a lot. What's more, human being is bot good at this kind of 3D plots. While the trellis plot presents simpler density contour between education number and capital loss when age is divided into several categories. It shows that generally the younger group has large probability of lower education number and lower capital loss. As age gets older, there is high probability of higher education number and capital loss. But for age group >54, there is no significant mode for this density.
+
+
+
+```{r}
+## part 2.3
+da3<-da[which(da["capitalLoss"]!=0),]
+g<-plot_ly(da3,x=~age,y=~capitalLoss,z=~educationNum) %>%
+  add_markers() %>%
+  layout(scene=list(
+                    xaxis=list(title="age"),
+                    yaxis=list(title="capital loss"),
+                    zaxis=list(title="education num")
+                    ))
+
+nyda3<-da3
+nyda3$age_gr<-cut_number(as.numeric(da3$age),6)
+t<-ggplot(nyda3,aes(x=capitalLoss,y=educationNum))+
+   stat_density_2d(aes(fill = ..density..), geom = "raster", contour = FALSE)+
+   facet_wrap(vars(age_gr))
+g
+t
+```
+
+### part 4
+Shingles compensates the boundary effect and reduces the risk of shutting out potential key points around boundary, but on the other hand increases the working load of analyzing the same points in different groups.
+
+
+```{r}
+## part 2.4
+da4<-da3
+da4$age_gr<-cut_number(as.numeric(da3$age),4)
+g<-ggplot(da4,aes(x=educationNum,y=capitalLoss))+
+   geom_point()+
+   facet_wrap(vars(age_gr))
+
+
+nyda4<-lattice::equal.count(da3$age, number=4, overlap=0.1) #overlap is 10% 
+L<-matrix(unlist(levels(nyda4)), ncol=2, byrow = T)
+L1<-data.frame(Lower=L[,1],Upper=L[,2], Interval=factor(1:nrow(L)))
+#ggplot(L1)+geom_linerange(aes(ymin = Lower, ymax = Upper, x=Interval))
+
+index=c()
+Class=c()
+for(i in 1:nrow(L)){
+  Cl=paste("[", L1$Lower[i], ",", L1$Upper[i], "]", sep="")
+  ind=which(da3$age>=L1$Lower[i] &da3$age<=L1$Upper[i])
+  index=c(index,ind)
+  Class=c(Class, rep(Cl, length(ind)))
+}
+
+nynyda4<-da3[index,]
+nynyda4$Class<-as.factor(Class)
+#nyda4<-as.data.frame(nyda4)
+t<-ggplot(nynyda4, aes(x=educationNum,y=capitalLoss))+
+   geom_point()+
+   facet_wrap(~Class, labeller = "label_both")
+
+g
+t
+```
+
+
+
+## Appendix code
+```{r ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}
+```

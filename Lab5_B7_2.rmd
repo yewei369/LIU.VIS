@@ -1,0 +1,319 @@
+---
+title: "Lab5_B7_2"
+subtitle: "Visualization -- 732A98"
+author: "Jun Li, Fahed Maqbool"
+date: '2020-12-20'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(eval=TRUE,echo=F,
+                      message = F, warning = F, error = F,
+                      fig.width=7, fig.height=5, fig.align="center")
+```
+
+```{r}
+RNGversion('3.5.1')
+library(ggplot2)
+library(plotly)
+
+library(tm)
+library(SnowballC)
+library(wordcloud)
+library(RColorBrewer)
+library(RCurl)
+library(XML)
+#source('http://www.sthda.com/upload/rquery_wordcloud.r')
+
+library(GGally)
+library(crosstalk)
+library(tidyr)
+```
+
+## Statement of Contribution
+
+There are two steps of the shared group strategy: each member should try to solve the problems for themselves, potential discussions are encouraged to inspire learning process; the report is generated and merged in principle presenting the more appropriate solutions out of members'. Generally, both members are capable of delivering their own solutions and equally contributed in the group report. 
+
+The same strategy was implemented in report revision, where discussion between members and with classmates comprised the main part of problem identification. In this report, Jun Li has major responsibility for assignment 2, while Fahed Maqbool for assignment 1.
+
+
+## Assignment 1: Text Visualization of Amazon reviews
+### part 1
+It shows that "year, look, great, time, casio and price" are those most frequent words in satisfied cilents' comment, probably clients are satisfied by the outlook, time precision and price. While in the second graph, "time, year, casio, work, replac and amazon" are the hot words, which suggests that clients probably complain over these related items which may needs improving. 
+
+```{r}
+## part 1.1
+#day=read.delim("Five.txt",header=T)
+#dan=read.delim("OneTwo.txt",header=T)
+
+mywc<-function(file,bort){
+    text<-readLines(file)
+    docs <- Corpus(VectorSource(text)) ## create corpus
+    docs <- tm_map(docs, content_transformer(tolower)) #convert to lower case
+    docs <- tm_map(docs, removeNumbers)
+    docs <- tm_map(docs, removeWords, stopwords("english"))
+    docs <- tm_map(docs, removePunctuation)
+    docs <- tm_map(docs, stripWhitespace) # delete extra white spaces
+    docs <- tm_map(docs, stemDocument)  #convert to original form
+    docs <- tm_map(docs, removeWords, bort)
+    
+    tdm <- TermDocumentMatrix(docs) #create term document matrix
+    m <- as.matrix(tdm)
+    v <- sort(rowSums(m),decreasing=TRUE)
+    d <- data.frame(word = names(v),freq=v)
+    
+    
+    like<-wordcloud(d$word,d$freq, min.freq=5, max.words=200,
+                random.order=FALSE, rot.per=0.35, 
+                use.r.layout=FALSE,colors=brewer.pal(8, "Dark2"))}
+    
+    #invisible(list(tdm=tdm, freqTable = d))}
+    
+mywc(file="Five.txt",bort=c("watch","the","one")) 
+```
+
+
+```{r}
+mywc("OneTwo.txt",bort=c("watch","the","one"))     
+```
+
+### part 2
+Generally, the pleased customers give quite positive feedback such as "I~happy", "price~right"; while negative feedback from unpleased customers focusing on mainly battery. (For clarity, "Phrase net 1" below is referred to the comments from satisfied customers, and "Phrase net 2" for unsatisfied customers.)
+
+#### Stop words with "am, is, are, was, were"
+First graph shows that "I~looking, price~right, watch~rated" are the most frequent phrases, which suggests that the satisfied clients tend to rate the product, expressing what they are/were looking for and think price is fair. While the second graph shows that the un-pleased clients tend to express their mind around watch itself, then themselves. Besides, there is a strong connection between "watch" and "great", but unclear if that is what they "thought" before the transaction or what they think maybe "in general" afterwards.
+
+<center>
+
+![Phrase net 1 with "am, is, are, was, were"](./phraseNet1.1.png)
+
+</center>
+
+<center>
+
+![Phrase net 2 with "am, is, are, was, were"](./phraseNet2.1.png)
+
+</center>
+
+#### Stop words with "a, the"
+Most frequent connections in satisfied comments are: "change~battery", "for~price", "use~digital", "worth~money"; while in the unpleased comments are: "replace~battery", "like~look", "returned~watch", "credit~amount".
+
+<center>
+
+![Phrase net 1 with "a, the"](./phraseNet1.2.png)
+
+</center>
+
+<center>
+
+![Phrase net 2 with "a, the"](./phraseNet2.2.png)
+
+</center>
+
+#### Stop words with "at"
+Most frequent connections in satisfied comments are: "Costco~one"; while in the unpleased comments are "terrible~keeping"
+
+<center>
+
+![Phrase net 1 with "at"](./phraseNet1.3.png)
+
+</center>
+
+<center>
+
+![Phrase net 2 with "at"](./phraseNet2.3.png)
+
+</center>
+
+#### Stop words with "of"
+Most frequent connections in satisfied comments are: "years~service"; while in the unpleased comments are "piece~junk", "couple~months"
+
+<center>
+
+![Phrase net 1 with "of"](./phraseNet1.4.png)
+
+</center>
+
+<center>
+
+![Phrase net 2 with "of"](./phraseNet2.4.png)
+
+</center>
+
+### part 3
+
+<center>
+
+![Word tree 1](./wordTree1.png)
+
+</center>
+
+<center>
+
+![Word tree 2](./wordTree2.png)
+
+</center>
+
+**mostly often mentioned properties**
+
+* Time precision
+* price
+* functionality
+* battery quality
+* water resistance
+* digital display  
+
+**satisfied customers are talking about **
+
+* price
+* time precision
+* good look
+* service
+* water resistance
+* working well
+
+
+**unpleased customers are talking about**
+
+* digital display
+* bad battery quality
+* support from Amazon
+
+
+**properties mentioned by both group**
+
+* service quality
+* price
+* look experience
+
+
+**understanding watch characteristics by observing these graphs?**
+
+It should be hard to understand most of the watch characteristics just from the graph which shows only the main connections and structure of the comments. One need to go through quite much of the contents based on the given analyzing tools and do some research. But with help of inspirations and active threads from word tree and phrase net, one can easily find the most frequent words and connections, then jump into the analysis and improve the efficiency.
+
+
+
+
+## Assignment 2: Interactive analysis of Italian olive oils
+### part 1
+This special group has low values of eicosenoic 1, 2 and 3.
+
+```{r}
+## part 2.1
+olive<-read.csv("olive.csv")
+da<-SharedData$new(olive)
+
+scatter<-da %>% plot_ly(x=~linoleic,y=~eicosenoic)
+scatter
+```
+
+### part 2
+It shows that region 2 and 3 correspond unusually low values of eicosenoic; olive from region 2 has stearic value around 200~270. Selection, connection and filtering operators are used in this step.
+
+```{r}
+## part 2.2
+olive2<-olive
+olive2$eicosenoic.low<-ifelse(olive2$eicosenoic<4,"low","high")
+olive2$nyRegion<-as.factor(olive2$Region)
+da2<-SharedData$new(olive2)
+
+scatter<-da2 %>% plot_ly(x=~linoleic,y=~eicosenoic) %>% add_markers(color=~eicosenoic.low)
+bar<-da2 %>% plot_ly(x=~nyRegion) %>% add_histogram(color=~eicosenoic.low) %>% layout(barmode="overlay")
+
+bscols(widths=c(2, NA),
+       filter_slider("FL", "stearic", da2, ~stearic),
+       subplot(scatter,bar)%>%
+       highlight(on="plotly_select", dynamic=T, persistent = T, opacityDim = I(1)) %>% 
+       hide_legend())
+
+```
+
+### part 3
+The green markers in the second plot arachidic vs linolenic, are considered as outliers. And they are also outliers in the first plot. Especially, These points are from region 3, having linoleic value range 530~1050, and also much lower eicosenoic respective arachidic values. 
+
+
+```{r}
+## part 2.3
+olive3<-olive
+olive3$Region3<-ifelse(olive3$Region==3,"3","not 3")
+da3<-SharedData$new(olive3)
+scatter1<-plot_ly(da3,x=~linoleic,y=~eicosenoic) %>% add_markers(color=~Region3)
+scatter2<-plot_ly(da3,x=~linolenic,y=~arachidic) %>% add_markers(color=~Region3) 
+
+subplot(scatter1,scatter2) %>%
+  highlight(on="plotly_select", dynamic=T, persistent=T, opacityDim = I(1)) %>%
+  hide_legend()
+
+```
+
+### part 4
+It seems like linoleic, arachidic and eicosenoic can be considered as influential variables, where those three regions are grouped in paralell coordinates relatively in a good way. And the 3D scatter plot clearly shows a clustering between 3 groups with these 3 variables as axis. 
+
+In detail, those with low eicosenoic value around 1~3 and lower linoleic value below 1200 come from region 2, those with low eicosenoic value around 1~3 and higher linoleic value above 1200 come from region 3, and those with high eicosenoic value >10 come from region 1. 
+
+
+```{r}
+## part 2.4
+### paralell coordinates
+parcoor0<-ggparcoord(olive, columns = c(4:11)) ##
+d<-plotly_data(ggplotly(parcoor0))%>%
+  mutate(Region3=as.factor(Region))
+
+d1<-SharedData$new(d, ~.ID, group="olive")
+
+parcoor1<-plot_ly(d1, x=~variable, y=~value,color=~Region3)%>%
+          add_markers(marker=list(size=0.3),text=~.ID, hoverinfo="text")%>%
+          add_lines(line=list(width=0.3))
+
+## bar plot
+bar<-plot_ly(d1, x=~Region )%>%add_histogram(color=~Region3)%>%layout(barmode="stack")
+
+## 3d scatter plot
+ButtonsX=list()
+for (i in 4:11){
+  ButtonsX[[i-3]]= list(method = "restyle",
+                        args = list( "x", list(olive[[i]])),
+                        label = colnames(olive)[i])}
+ButtonsY=list()
+for (i in 4:11){
+  ButtonsY[[i-3]]= list(method = "restyle",
+                        args = list( "y", list(olive[[i]])),
+                        label = colnames(olive)[i])}
+ButtonsZ=list()
+for (i in 4:11){
+  ButtonsZ[[i-3]]= list(method = "restyle",
+                        args = list( "z", list(olive[[i]])),
+                        label = colnames(olive)[i])}
+olive3=olive[, 4:11]
+olive3$.ID=1:nrow(olive)
+d3<-SharedData$new(olive3, ~.ID, group="olive")
+
+scatter3d<-plot_ly(d3,x=~linoleic,y=~arachidic,z=~eicosenoic) %>%
+    add_markers()  %>%
+    layout(xaxis=list(title="X"), 
+           yaxis=list(title="Y"),
+           zaxis=list(title="Z"),
+          title = "Select variable:",
+          updatemenus = list(
+              list(y=0.7, buttons = ButtonsX),
+              list(y=0.6, buttons = ButtonsY),
+              list(y=0.5, buttons = ButtonsZ))  )
+
+ps<-htmltools::tagList(parcoor1 %>%
+  highlight(on="plotly_select", dynamic=T, persistent = T, opacityDim = I(1))%>%hide_legend(),
+      bar %>%
+  highlight(on="plotly_select", dynamic=T, persistent = T, opacityDim = I(1))%>%hide_legend(),
+      scatter3d %>%
+  highlight(on="plotly_click", dynamic=T, persistent = T)%>%hide_legend() )
+htmltools::browsable(ps) 
+```
+
+
+### part 5
+Connection, selection, re-configuring and zooming operators are used to improve screen space, data value and structure space in step 4, and filtering operator can be added here as well. Based on the influential variables obtained from step 4, we can with quite large confidence say that those with low eicosenoic value around 1~3 and lower linoleic value below 1200 come from region 2, those with low eicosenoic value around 1~3 and higher linoleic value above 1200 come from region 3, and those with high eicosenoic value >10 come from region 1.
+
+Filtering operator should be a good alternative for this analysis, since through defining precise range of a variable, a detailed distribution will be linked and presented in the bar plot and 3D scatter plot. That is going to give a better picture how different variables are distributed and find a better non-linear boundary.
+
+## Appendix code
+```{r ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}
+```

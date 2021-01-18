@@ -1,0 +1,213 @@
+---
+title: "Lab2_B7_2"
+subtitle: "Visualization -- 732A98"
+author: "Jun Li, Fahed Maqbool"
+date: '2020-12-20'
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(eval=TRUE,echo=F,
+                      message = F, warning = F, error = F,
+                      fig.width=7, fig.height=5, fig.align="center")
+```
+
+```{r}
+#RNGversion('3.5.1')
+library(ggplot2)
+library(gridExtra)
+library(plotly)
+library(xlsx)
+library(MASS)
+```
+
+## Statement of Contribution
+
+There are two steps of the shared group strategy: each member should try to solve the problems for themselves, potential discussions are encouraged to inspire learning process; the report is generated and merged in principle presenting the more appropriate solutions out of members'. Generally, both members are capable of delivering their own solutions and equally contributed in the group report. 
+
+The same strategy was implemented in report revision, where discussion between members and with classmates comprised the main part of problem identification. In this report, Jun Li has major responsibility for assignment 1, while Fahed Maqbool for assignment 2. 
+
+
+## Assignment 1: Perception in Visualization
+
+### part 1
+The first graph presents groups with too many hue levels, which makes it difficult for human beings to have a good perception. While the second one presents 4 groups with discrete classifications and large hue differences, which is much easier to interpret.
+
+```{r}
+## part 1.1
+da<-read.csv("olive.csv")
+ggplot(da,aes(x=palmitic,y=oleic,color=linoleic))+geom_point()
+
+linoleic_gr<-cut_interval(da$linoleic,4)
+#da<-cbind(da,linoleic_gr)
+ggplot(da,aes(x=palmitic,y=oleic,color=linoleic_gr))+geom_point()
+```
+
+### part 2
+The graph with grouping by size is more difficult to differentiate between the categories and connect your findings to perception metrics, while it's the best by color. Since there are 4 levels in each mapping, the perception metrics are 2 bits. While human usually has channel capacity of around 3.1 bits for colors, 3 bits for orientation and 2.2 bits for size, the color mapping is relatively better for us to perceive.
+
+
+```{r}
+## part 1.2
+myfunc<-function(x){## convert interval to its two limit numbers
+  x<-as.character(x) ## to character
+  limits<-strsplit(x,",") ## to character vector containing limits
+  lo<-limits[[1]][1];hi<-limits[[1]][2]
+  re<-mean(as.numeric(c(substr(lo,2,nchar(lo)),substr(hi,1,nchar(lo)-1)))) ## mean of interval
+  return (re)}
+
+angle<-unlist(lapply(linoleic_gr,myfunc))
+#da<-cbind(da,angle)
+tu<-vector("list",3)
+tu[[1]]<-ggplot(da,aes(x=palmitic,y=oleic,color=linoleic_gr))+geom_point()
+tu[[2]]<-ggplot(da,aes(x=palmitic,y=oleic,size=linoleic_gr))+geom_point()
+tu[[3]]<-ggplot(da,aes(x=palmitic,y=oleic))+geom_point()+geom_spoke(aes(angle=angle,radius=100))
+
+print("Here comes graph grouped by color:")
+tu[[1]]
+print("Here comes graph grouped by size:")
+tu[[2]]
+print("Here comes graph grouped by orientation:")
+tu[[3]]
+#grid.arrange(arrangeGrob(grobs=tu))
+```
+
+
+
+### part 3
+The first graph is hard to tell the boundary with similar hues, while the second graph with categorical variable presents preattentive feature in a better way. There are continuous brightness levels in the first graph and 3 color levels in the second, while human usually have channel capacity of 5 respective 10 levels in them. (Therefore, preattentive mechanism leads to an instant detection. Moreover, the continuous color scale should be applied to discrete variables like regions in the first graph.)
+
+
+```{r}
+## part 1.3
+ggplot(da,aes(x=oleic,y=eicosenoic,color=Region))+geom_point()
+ggplot(da,aes(x=oleic,y=eicosenoic,color=factor(Region)))+geom_point()
+
+```
+
+### part 4
+There is too much information presented in the graph, and many of them have overlapped, which makes it hard for readers to activate preattentive mechanism. For example, there are 4 size levels, 3 shape levels and 3 color levels, which are 36 different groups of observations and makes it difficult to activate preattentive mechanism and detect boundaries instantly. 
+
+
+```{r}
+## part 1.4
+linoleic_gr<-cut_interval(da$linoleic,3)
+palmitic_gr<-cut_interval(da$palmitic,3)
+palmitoleic_gr<-cut_interval(da$palmitoleic,3)
+shape<-factor(unlist(lapply(palmitic_gr,myfunc)))
+size<-unlist(lapply(palmitoleic_gr,myfunc))
+ggplot(da,aes(x=oleic,y=eicosenoic,color=linoleic_gr))+geom_point(aes(shape=shape,size=size))
+
+```
+
+### part 5
+The graph makes it easier to identify the boundary, since there is fewer conjunction of preattentive features than in part 4. According to Treisman's theory, feature map is coded in parallel. Preattentive process occurs when the target has unique features, and a conjunction target is hard to detect instantaneously since some preattentive features are shared by other objects. And in this case, all groups have their unique color, thus preattentive detection takes place here. 
+
+
+```{r}
+## part 1.5
+ggplot(da,aes(x=oleic,y=eicosenoic,color=factor(Region)))+geom_point(aes(shape=shape,size=size))
+```
+
+### part 6
+It is inconvenient for readers to know what these proportions denote, when they have to pair the color from the left to the list on the right.
+
+
+```{r}
+## part 1.6
+fig <- plot_ly(da,labels=~Area,type='pie',textinfo="none") #%>% layout(showlegend=FALSE)
+fig
+```
+
+### part 7
+The contour plot is quite misleading, since it is prone to interpret as that these variables have high dependency in some ranges, which is not true. In other words, scatter plot gives possibility to detect linear correlation and contour plot shows joint probability how high tendency variables are found in some range/area. Thus in this case, when one is aiming at linear correlation of variables but employs contour plot, they would reach result that variables have high correlation in the highly dense areas. However, the scatter plot shows there is no significant linear correlation between them. (Moreover, for those areas where there is no observations but still contour plotted, this would let readers think there are actually observations.)
+
+
+```{r}
+## part 1.7
+ggplot(da,aes(x=linoleic,y=eicosenoic))+
+    geom_point()+
+    geom_density_2d()
+
+```
+
+
+## Assignment 2: Multidimensional scaling of a high-dimensional dataset
+### part 1
+It is reasonable to scale the data, since there are many variables to describe each team, and MDS is recommended here to analyze high-dimensional data.
+
+```{r}
+## part 2.1
+da<-read.xlsx("baseball-2016.xlsx",1,header=TRUE)
+```
+
+### part 2
+It seems that the horizontal boundary (i.e. the new variable *y*) differentiates groups better. And Boston Red Sox and Atlanta Braves should be the outliers.
+
+
+```{r}
+## part 2.2
+nyda<-scale(da[,3:ncol(da)])  ## scaled numeric dataset
+delta_config<-dist(nyda,method="minkowski",p=2)  ## distance matrix of nyda
+delta<-as.matrix(delta_config)
+d2<-isoMDS(delta,k=2) ## mapped space in 2 dimensions
+d2points<-d2$points   ## mapped coordinates
+d2<-as.data.frame(d2points)
+names(d2)=c("x","y")
+da2<-cbind(d2,league=da$League,name=da$Team) ## new dataframe
+
+plot_ly(da2,x=~x,y=~y,color=~league,type="scatter",mode="markers",hovertext=~name)
+
+```
+
+### part 3
+Generally the MDS presents a quite good result where the new and original distances are close to the regression line. However, two pairs are relatively not successfully mapped: Minnesota Twins-Aizona Diamondbacks, Oakland Atheletics-Milwaukee Brewers  
+ 
+```{r}
+## part 2.3
+sh<-Shepard(delta_config,d2points)
+d<-as.numeric(delta_config)
+new_d<-as.numeric(dist(d2points))
+
+n=nrow(d2points)  ## index matrix for hoverinfo text 
+index=matrix(1:n, nrow=n, ncol=n)
+index1=as.numeric(index[lower.tri(index)])
+n=nrow(d2points)
+index=matrix(1:n, nrow=n, ncol=n, byrow = T)
+index2=as.numeric(index[lower.tri(index)])
+
+plot_ly() %>%
+        add_markers(x=~d,y=~new_d,
+                    hoverinfo="text",
+                    text=~paste('Obj1: ', da2$name[index1],
+                                '<br> Obj 2: ', da2$name[index2]))  %>%
+        add_lines(x=~sh$x,y=~sh$yf)
+```
+
+
+### part 4
+It seems that variables such as SH, IBB, HR and HR.per.game have strongest correlation with the best MDS variable, which is consistent with actual situation of US base-ball teams. This selected MDS variable can be considered as a linear combination of these four variables. For example, SH (sacrifice hits) and IBB (Intentional base on balls) have negative correlation with selected MDS variable which has higher values for AL, while  HR (home runs) and HR.per.game have positive correlation with it. That is resulted by the rule difference between AL and NL that AL allow the DH (designated hitter), which makes AL power-based teams preferring home runs and NL more orientated towards offensive runs.
+
+
+```{r}
+## part 2.4
+g<-vector("list",length=26)
+#g<-NULL
+na<-names(da)
+MDS<-da2$y
+da3<-cbind(da,MDS)
+for(j in 1:26){
+  graph<-ggplot()+geom_point(aes(x=da3[,na[j+2]],y=da3$MDS))+
+           xlab(na[j+2])+ylab("MDS")
+  plot(graph)
+  #g<-append(g,list(graph))
+  }  ## ?? without plot() cmd graph list will always be overwritten by the last graph
+
+#grid.arrange(arrangeGrob(grobs=g))
+
+```
+
+## Appendix code
+```{r ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}
+```
